@@ -1,10 +1,11 @@
 package io.latent.storm.rabbitmq;
 
-import backtype.storm.spout.Scheme;
-import backtype.storm.spout.SpoutOutputCollector;
-import io.latent.storm.rabbitmq.config.ConsumerConfig;
-
 import java.util.List;
+
+import org.apache.storm.spout.Scheme;
+import org.apache.storm.spout.SpoutOutputCollector;
+
+import io.latent.storm.rabbitmq.config.ConsumerConfig;
 
 /**
  * A RabbitMQ spout that emits an unanchored tuple stream on default stream. Should be used when Storm's guaranteed message

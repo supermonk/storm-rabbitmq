@@ -1,10 +1,15 @@
-package io.latent.storm.rabbitmq;
+package symantec.trident.com.bolt;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.storm.trident.tuple.TridentTuple;
 import org.apache.storm.tuple.Tuple;
+
+import io.latent.storm.rabbitmq.Message;
+import io.latent.storm.rabbitmq.RabbitMQProducer;
+ 
 
 /**
  * This interface describes an object that will perform the work of mapping
@@ -12,7 +17,12 @@ import org.apache.storm.tuple.Tuple;
  * exchange.
  *
  */
-public abstract class TupleToMessage implements Serializable {
+public abstract class TridentTupleToMessage implements Serializable {
+  /**
+   * 
+   */
+  private static final long serialVersionUID = 1L;
+
   protected void prepare(@SuppressWarnings("rawtypes") Map stormConfig) {}
 
   /**
@@ -24,7 +34,7 @@ public abstract class TupleToMessage implements Serializable {
    * @return The {@link Message} for the {@link RabbitMQProducer} to publish. If
    *          transformation fails this should return Message.NONE.
    */
-  protected Message produceMessage(Tuple input) {
+  protected Message produceMessage(TridentTuple input) {
     return Message.forSending(
         extractBody(input),
         specifyHeaders(input),
@@ -44,7 +54,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return message body as a byte array or null if extraction cannot be performed
    */
-  protected abstract byte[] extractBody(Tuple input);
+  protected abstract byte[] extractBody(TridentTuple input);
 
   /**
    * Determine the exchange where the message is published to. This can be
@@ -53,7 +63,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return the exchange where the message is published to.
    */
-  protected abstract String determineExchangeName(Tuple input);
+  protected abstract String determineExchangeName(TridentTuple input);
 
   /**
    * Determine the routing key used for this message. This can be derived based on
@@ -63,7 +73,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return the routing key for this message
    */
-  protected String determineRoutingKey(Tuple input) {
+  protected String determineRoutingKey(TridentTuple input) {
     return ""; // rabbitmq java client library treats "" as no routing key
   }
 
@@ -74,7 +84,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return the headers as a map
    */
-  protected Map<String, Object> specifyHeaders(Tuple input)
+  protected Map<String, Object> specifyHeaders(TridentTuple input)
   {
     return new HashMap<String, Object>();
   }
@@ -86,7 +96,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return content type
    */
-  protected String specifyContentType(Tuple input) {
+  protected String specifyContentType(TridentTuple input) {
     return null;
   }
 
@@ -97,7 +107,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return content encoding
    */
-  protected String specifyContentEncoding(Tuple input) {
+  protected String specifyContentEncoding(TridentTuple input) {
     return null;
   }
 
@@ -111,7 +121,7 @@ public abstract class TupleToMessage implements Serializable {
    * @param input the incoming tuple
    * @return whether the message should be persistent to disk or not. Defaults to not.
    */
-  protected boolean specifyMessagePersistence(Tuple input) {
+  protected boolean specifyMessagePersistence(TridentTuple input) {
     return false;
   }
 }

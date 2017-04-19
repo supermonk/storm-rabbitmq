@@ -1,9 +1,8 @@
 package io.latent.storm.rabbitmq;
 
-import io.latent.storm.rabbitmq.config.ConnectionConfig;
-
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +15,8 @@ import com.rabbitmq.client.ConsumerCancelledException;
 import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
+
+import io.latent.storm.rabbitmq.config.ConnectionConfig;
 
 /**
  * An abstraction on RabbitMQ client API to encapsulate interaction with RabbitMQ and de-couple Storm API from RabbitMQ API.
@@ -46,12 +47,15 @@ public class RabbitMQConsumer implements Serializable {
                           Declarator declarator,
                           ErrorReporter errorReporter) {
     this.connectionFactory = connectionConfig.asConnectionFactory();
+    this.connectionFactory.setAutomaticRecoveryEnabled(true);
+    // added heartBeats to consumer as well
+    this.connectionFactory.setRequestedHeartbeat(connectionConfig.getHeartBeat());
     this.highAvailabilityHosts = connectionConfig.getHighAvailabilityHosts().toAddresses();
     this.prefetchCount = prefetchCount;
     this.queueName = queueName;
     this.requeueOnFail = requeueOnFail;
     this.declarator = declarator;
-
+    
     this.reporter = errorReporter;
     this.logger = LoggerFactory.getLogger(RabbitMQConsumer.class);
   }
@@ -68,7 +72,8 @@ public class RabbitMQConsumer implements Serializable {
       return Message.NONE;
     } catch (InterruptedException ie) {
       /* nothing to do. timed out waiting for message */
-      logger.debug("interruepted while waiting for message", ie);
+      logger.error("interruepted while waiting for message", ie);
+      reset();
       return Message.NONE;
     } catch (ConsumerCancelledException cce) {
       /* if the queue on the broker was deleted or node in the cluster containing the queue failed */
@@ -178,25 +183,40 @@ public class RabbitMQConsumer implements Serializable {
   }
 
   private void reinitIfNecessary() {
-    if (consumerTag == null || consumer == null) {
+    logger.debug("RECONNECT-reinit-start:" + System.currentTimeMillis() );
+    if (consumerTag == null || consumer == null || channel == null || (!channel.isOpen()) || consumer.getChannel()==null || !consumer.getChannel().isOpen()) {
+      logger.info(channel!=null?channel.getCloseReason().toString():"Channel is null");
+      logger.info("RECONNECT-reinit-closecall:" + System.currentTimeMillis() );
       close();
+      logger.info("RECONNECT-reinit-opencall:" + System.currentTimeMillis() );
       open();
     }
+    logger.debug("RECONNECT-reinit-end:" + System.currentTimeMillis() );
   }
 
   private Connection createConnection() throws IOException {
-    Connection connection = highAvailabilityHosts == null || highAvailabilityHosts.length == 0 
-          ? connectionFactory.newConnection() 
-          : connectionFactory.newConnection(highAvailabilityHosts);
+    logger.info("RECONNECT1:Reconnection Triggered, Start" + System.currentTimeMillis() );
+    Connection connection = null ;
+    try {
+      connection = highAvailabilityHosts == null || highAvailabilityHosts.length == 0 
+            ? connectionFactory.newConnection() 
+            : connectionFactory.newConnection(highAvailabilityHosts);
+    } catch (TimeoutException e) {
+      logger.error("RECONNECT2:Error while initationing" + System.currentTimeMillis() );
+      
+      e.printStackTrace();
+    }
+    
     connection.addShutdownListener(new ShutdownListener() {
       @Override
       public void shutdownCompleted(ShutdownSignalException cause) {
-        logger.error("shutdown signal received", cause);
+        logger.error("RECONNECT3:shutdown signal received", cause);
         reporter.reportError(cause);
         reset();
       }
     });
-    logger.info("connected to rabbitmq: " + connection + " for " + queueName);
+    logger.info("RECONNECT4:connected to rabbitmq: " + connection + " for " + queueName);
+    logger.info("RECONNECT5:Reconnection Triggered, Start" + System.currentTimeMillis() );
     return connection;
   }
 }

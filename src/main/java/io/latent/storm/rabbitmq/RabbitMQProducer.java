@@ -1,14 +1,24 @@
 package io.latent.storm.rabbitmq;
 
-import backtype.storm.topology.ReportedFailedException;
-import com.rabbitmq.client.*;
-import io.latent.storm.rabbitmq.config.ConnectionConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
+
+import org.apache.storm.topology.ReportedFailedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.AlreadyClosedException;
+import com.rabbitmq.client.BlockedListener;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.ShutdownListener;
+import com.rabbitmq.client.ShutdownSignalException;
+
+import io.latent.storm.rabbitmq.config.ConnectionConfig;
 
 public class RabbitMQProducer implements Serializable {
   private final Declarator declarator;
@@ -122,8 +132,16 @@ public class RabbitMQProducer implements Serializable {
 
   private Connection createConnection() throws IOException {
     ConnectionFactory connectionFactory = connectionConfig.asConnectionFactory();
-    Connection connection = connectionConfig.getHighAvailabilityHosts().isEmpty() ? connectionFactory.newConnection()
-        : connectionFactory.newConnection(connectionConfig.getHighAvailabilityHosts().toAddresses());
+    connectionFactory.setAutomaticRecoveryEnabled(true);
+    Connection connection = null;
+    try {
+      connection = connectionConfig.getHighAvailabilityHosts().isEmpty() ? connectionFactory.newConnection()
+          : connectionFactory.newConnection(connectionConfig.getHighAvailabilityHosts().toAddresses());
+    } catch (TimeoutException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    
     connection.addShutdownListener(new ShutdownListener() {
       @Override
       public void shutdownCompleted(ShutdownSignalException cause) {

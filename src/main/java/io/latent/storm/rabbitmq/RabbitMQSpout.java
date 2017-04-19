@@ -1,19 +1,18 @@
 package io.latent.storm.rabbitmq;
 
-import io.latent.storm.rabbitmq.config.ConsumerConfig;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.storm.spout.Scheme;
+import org.apache.storm.spout.SpoutOutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseRichSpout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.spout.Scheme;
-import backtype.storm.spout.SpoutOutputCollector;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.OutputFieldsDeclarer;
-import backtype.storm.topology.base.BaseRichSpout;
+import io.latent.storm.rabbitmq.config.ConsumerConfig;
 
 /**
  * A simple RabbitMQ spout that emits an anchored tuple stream (on the default stream). This can be used with
@@ -32,7 +31,17 @@ public class RabbitMQSpout extends BaseRichSpout {
 
   private boolean active;
   private String streamId;
+  
+  private Map consumerMap;
+  
+  public RabbitMQSpout(Scheme scheme,Map consumerMap ) {
+    this(MessageScheme.Builder.from(scheme), new Declarator.NoOp(),null,consumerMap);
+  }
 
+  public RabbitMQSpout(Scheme scheme, String streamId,Map consumerMap){
+    this(MessageScheme.Builder.from(scheme), new Declarator.NoOp(), streamId,consumerMap);
+}
+  
   public RabbitMQSpout(Scheme scheme) {
     this(MessageScheme.Builder.from(scheme), new Declarator.NoOp(),null);
   }
@@ -58,12 +67,21 @@ public class RabbitMQSpout extends BaseRichSpout {
       this.declarator =declarator;
       this.streamId = streamId;
   }
+  
+  public RabbitMQSpout(MessageScheme scheme, Declarator declarator, String streamId,Map consumerMap){
+    this.scheme =scheme;
+    this.declarator =declarator;
+    this.streamId = streamId;
+    this.consumerMap = consumerMap;
+}
 
   @Override
   public void open(final Map config,
                    final TopologyContext context,
                    final SpoutOutputCollector spoutOutputCollector) {
-    ConsumerConfig consumerConfig = ConsumerConfig.getFromStormConfig(config);
+    
+      ConsumerConfig consumerConfig = ConsumerConfig.getFromStormConfig(consumerMap);
+
     ErrorReporter reporter = new ErrorReporter() {
       @Override
       public void reportError(Throwable error) {
@@ -71,7 +89,7 @@ public class RabbitMQSpout extends BaseRichSpout {
       }
     };
     consumer = loadConsumer(declarator, reporter, consumerConfig);
-    scheme.open(config, context);
+    scheme.open(consumerMap, context);
     consumer.open();
     prefetchCount = consumerConfig.getPrefetchCount();
     logger = LoggerFactory.getLogger(RabbitMQSpout.class);
@@ -154,7 +172,7 @@ public class RabbitMQSpout extends BaseRichSpout {
     }else{
       outputFieldsDeclarer.declareStream(streamId, scheme.getOutputFields());
     }
-  }
+  } 
 
   @Override
   public void deactivate()

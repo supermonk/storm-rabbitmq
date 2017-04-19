@@ -51,12 +51,13 @@ While the standard ```RabbitMQSpout``` above will deliver messages on an anchore
 Scheme scheme = new YourCustomMessageScheme();
 IRichSpout spout = new UnanchoredRabbitMQSpout(scheme);
 ```
+
 ### Trident Spout
 ```java
 Scheme scheme = new YourCustomMessageScheme();
 Config producerConf = new Config();
 TridentRabbitMqSpout spout = new TridentRabbitMqSpout(scheme, streamId, producerConf);
-
+```
 ## MultiStream Spout
 
 If you want to split the incoming message stream from your RabbitMQ queue in some manner suitable for your use case, you can use the ```MultiStreamSpout```. You need to provide an implementation of ```MultiStreamSplitter``` that will separate the stream of tuples based on either the deserialized message (as a tuple) or the original serialized ```Message```.

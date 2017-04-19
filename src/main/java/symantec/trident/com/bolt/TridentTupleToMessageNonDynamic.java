@@ -1,19 +1,24 @@
-package io.latent.storm.rabbitmq;
+package symantec.trident.com.bolt;
 
 import java.util.Map;
 
-import org.apache.storm.tuple.Tuple;
+import org.apache.storm.trident.tuple.TridentTuple;
 
 import io.latent.storm.rabbitmq.config.ProducerConfig;
 
-public abstract class TupleToMessageNonDynamic extends TupleToMessage
+public abstract class TridentTupleToMessageNonDynamic extends TridentTupleToMessage
 {
+  /**
+   * 
+   */
+  private static final long serialVersionUID = 1L;
   private String exchangeName;
   private String routingKey;
   private String contentType;
   private String contentEncoding;
   private boolean persistent;
 
+  @SuppressWarnings("unchecked")
   @Override
   protected void prepare(@SuppressWarnings("rawtypes") Map stormConfig)
   {
@@ -26,31 +31,31 @@ public abstract class TupleToMessageNonDynamic extends TupleToMessage
   }
 
   @Override
-  protected String determineExchangeName(Tuple input)
+  protected String determineExchangeName(TridentTuple input)
   {
     return exchangeName;
   }
 
   @Override
-  protected String determineRoutingKey(Tuple input)
+  protected String determineRoutingKey(TridentTuple input)
   {
     return routingKey;
   }
 
   @Override
-  protected String specifyContentType(Tuple input)
+  protected String specifyContentType(TridentTuple input)
   {
     return contentType;
   }
 
   @Override
-  protected String specifyContentEncoding(Tuple input)
+  protected String specifyContentEncoding(TridentTuple input)
   {
     return contentEncoding;
   }
 
   @Override
-  protected boolean specifyMessagePersistence(Tuple input)
+  protected boolean specifyMessagePersistence(TridentTuple input)
   {
     return persistent;
   }

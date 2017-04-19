@@ -7,10 +7,12 @@ import java.util.Map;
 import static io.latent.storm.rabbitmq.config.ConfigUtils.*;
 
 public class ConsumerConfig implements Serializable {
+  public static final String TOPOLOGY_MESSAGE_TIMEOUT_SECS = "";
   private final ConnectionConfig connectionConfig;
   private final int prefetchCount;
   private final String queueName;
   private final boolean requeueOnFail;
+  
 
   public ConsumerConfig(ConnectionConfig connectionConfig,
                         int prefetchCount,
@@ -44,6 +46,7 @@ public class ConsumerConfig implements Serializable {
 
   public static ConsumerConfig getFromStormConfig(Map<String, Object> stormConfig) {
     ConnectionConfig connectionConfig = ConnectionConfig.getFromStormConfig(stormConfig);
+    // gets connection config and adds it in consumer config.
     return new ConsumerConfig(connectionConfig,
                               getFromMapAsInt("rabbitmq.prefetchCount", stormConfig),
                               getFromMap("rabbitmq.queueName", stormConfig),
@@ -58,5 +61,6 @@ public class ConsumerConfig implements Serializable {
     addToMap("rabbitmq.requeueOnFail", map, requeueOnFail);
     return map;
   }
+ 
 }
 
